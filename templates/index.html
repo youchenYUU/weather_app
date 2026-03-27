@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Weather App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            transition: background 1s ease;
+        }
+        
+        .day-background {
+            background: linear-gradient(to bottom, #fffde7, #fff9c4, #ffecb3);
+        }
+        
+        .night-background {
+            background: linear-gradient(to bottom, #1a237e, #283593, #303f9f);
+            color: white;
+        }
+        
+        .night-background .bg-white {
+            background-color: rgba(30, 30, 60, 0.8);
+            color: white;
+        }
+        
+        .night-background .text-gray-600 {
+            color: #b0bec5;
+        }
+        
+        .compact-chart {
+            height: 180px !important;
+        }
+        
+        .weather-card {
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body class="min-h-screen day-background p-4">
+    <div class="max-w-6xl mx-auto">
+        <!-- 顶部搜索栏 -->
+        <div class="bg-white rounded-lg shadow-lg p-4 mb-4">
+            <h1 class="text-2xl font-bold text-center mb-2">Advanced Weather Checker</h1>
+            <div class="flex gap-2">
+                <input 
+                    type="text" 
+                    id="cityInput" 
+                    placeholder="Enter city name"
+                    class="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                <button 
+                    onclick="getWeatherData()"
+                    class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                    Check
+                </button>
+                <button 
+                    onclick="getCurrentLocation()"
+                    class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+                <button 
+                    onclick="toggleDayNight()"
+                    class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <!-- 主内容区域 - 网格布局 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- 当前天气 -->
+            <div id="weatherResult" class="hidden bg-white rounded-lg shadow-lg p-4">
+                <div class="flex items-center">
+                    <img id="weatherIcon" src="" alt="Weather icon" class="w-20 h-20">
+                    <div class="ml-4">
+                        <h2 id="cityName" class="text-xl font-bold"></h2>
+                        <div id="temperature" class="text-3xl font-bold"></div>
+                        <div id="description" class="text-lg"></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 text-center mt-4">
+                    <div>
+                        <div class="text-gray-600">Humidity</div>
+                        <div id="humidity" class="font-bold"></div>
+                    </div>
+                    <div>
+                        <div class="text-gray-600">Wind Speed</div>
+                        <div id="windSpeed" class="font-bold"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 地图区域 -->
+            <div id="mapSection" class="hidden bg-white rounded-lg shadow-lg p-4">
+                <h3 class="text-xl font-bold mb-2">Weather Map</h3>
+                <div id="weatherMap" class="w-full h-48 bg-gray-200 rounded flex items-center justify-center"></div>
+            </div>
+            
+            <!-- 预报图表 -->
+            <div id="forecastSection" class="hidden bg-white rounded-lg shadow-lg p-4">
+                <h3 class="text-xl font-bold mb-2">5-Day Forecast</h3>
+                <canvas id="forecastChart" class="w-full compact-chart"></canvas>
+            </div>
+            
+            <!-- 历史图表 -->
+            <div id="historicalSection" class="hidden bg-white rounded-lg shadow-lg p-4">
+                <h3 class="text-xl font-bold mb-2">Historical Temperature (7 days)</h3>
+                <canvas id="historicalChart" class="w-full compact-chart"></canvas>
+            </div>
+        </div>
+        
+        <!-- 城市比较区域 -->
+        <div id="citiesComparisonSection" class="hidden bg-white rounded-lg shadow-lg p-4 mt-4">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-xl font-bold">Cities Comparison</h3>
+                <div class="flex gap-2">
+                    <input 
+                        type="text" 
+                        id="compareCityInput" 
+                        placeholder="Add city to compare"
+                        class="px-4 py-1 border rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 text-sm"
+                    >
+                    <button 
+                        onclick="addCityToCompare()"
+                        class="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-400 text-sm"
+                    >
+                        Add
+                    </button>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-3" id="citiesComparison">
+                <!-- 城市比较卡片会在这里动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let forecastChart = null;
+        let historicalChart = null;
+        let compareCities = []; // 储存比较的城市
+        let isDayMode = true;
+        
+        function toggleDayNight() {
+            isDayMode = !isDayMode;
+            if (isDayMode) {
+                document.body.classList.remove('night-background');
+                document.body.classList.add('day-background');
+            } else {
+                document.body.classList.remove('day-background');
+                document.body.classList.add('night-background');
+            }
+        }
+        
+        async function getWeatherData() {
+            const city = document.getElementById('cityInput').value;
+            if (!city) return;
+            
+            try {
+                // 获取当前天气
+                const weatherResponse = await fetch(`/weather/${city}`);
+                const weatherData = await weatherResponse.json();
+                
+                if (!weatherResponse.ok) {
+                    alert(weatherData.error || 'An error occurred');
+                    return;
+                }
+                
+                // 显示当前天气
+                displayCurrentWeather(weatherData);
+                
+                // 获取未来5天预报
+                const forecastResponse = await fetch(`/forecast/${city}`);
+                const forecastData = await forecastResponse.json();
+                
+                if (forecastResponse.ok) {
+                    displayForecast(forecastData);
+                    document.getElementById('forecastSection').classList.remove('hidden');
+                }
+                
+                // 获取历史天气
+                const historicalResponse = await fetch(`/historical/${city}`);
+                const historicalData = await historicalResponse.json();
+                
+                if (historicalResponse.ok) {
+                    displayHistorical(historicalData);
+                    document.getElementById('historicalSection').classList.remove('hidden');
+                }
+                
+                // 显示地图
+                document.getElementById('mapSection').classList.remove('hidden');
+                initializeMap(weatherData.city, weatherData.temperature);
+                
+                // 显示城市比较
+                document.getElementById('citiesComparisonSection').classList.remove('hidden');
+                
+                // 如果是第一个城市，加入比较列表
+                if (compareCities.length === 0) {
+                    compareCities.push({
+                        city: weatherData.city,
+                        temperature: weatherData.temperature,
+                        humidity: weatherData.humidity,
+                        description: weatherData.description,
+                        icon: weatherData.icon
+                    });
+                    updateCityComparisonUI();
+                }
+                
+            } catch (error) {
+                alert('Error fetching weather data: ' + error.message);
+            }
+        }
+        
+        function displayCurrentWeather(data) {
+            document.getElementById('weatherResult').classList.remove('hidden');
+            document.getElementById('cityName').textContent = data.city;
+            document.getElementById('temperature').textContent = `${data.temperature}°C`;
+            document.getElementById('description').textContent = data.description;
+            document.getElementById('humidity').textContent = `${data.humidity}%`;
+            document.getElementById('windSpeed').textContent = `${data.wind_speed} m/s`;
+            document.getElementById('weatherIcon').src = 
+                `http://openweathermap.org/img/wn/${data.icon}@2x.png`;
+        }
+        
+        function displayForecast(data) {
+            const labels = data.map(item => item.date.substr(5)); // 只显示月-日
+            const temperatures = data.map(item => item.temp);
+            const humidities = data.map(item => item.humidity);
+            
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+            
+            if (forecastChart) {
+                forecastChart.destroy();
+            }
+            
+            forecastChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Temperature (°C)',
+                            data: temperatures,
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            tension: 0.1,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Humidity (%)',
+                            data: humidities,
+                            borderColor: 'rgb(54, 162, 235)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            tension: 0.1,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Temp.'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Humidity'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function displayHistorical(data) {
+            const labels = data.map(item => item.date.substr(5)); // 只显示月-日
+            const temperatures = data.map(item => item.temp);
+            
+            const ctx = document.getElementById('historicalChart').getContext('2d');
+            
+            if (historicalChart) {
+                historicalChart.destroy();
+            }
+            
+            historicalChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Historical Temperature (°C)',
+                            data: temperatures,
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Temp.'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function initializeMap(city, temperature) {
+            const mapDiv = document.getElementById('weatherMap');
+            mapDiv.innerHTML = `
+                <div class="text-center">
+                    <p class="text-xl">Interactive Map would show ${city} and nearby cities with temperature ${temperature}°C</p>
+                </div>
+            `;
+        }
+        
+        async function getCurrentLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async position => {
+                    try {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        
+                        // 使用反向地理编码 API 获取城市名称
+                        const response = await fetch(`https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=YOUR_API_KEY`);
+                        const data = await response.json();
+                        
+                        if (data.length > 0) {
+                            const city = data[0].name;
+                            document.getElementById('cityInput').value = city;
+                            getWeatherData();
+                        }
+                    } catch (error) {
+                        alert('Error getting location: ' + error.message);
+                    }
+                }, error => {
+                    alert('Error getting location: ' + error.message);
+                });
+            } else {
+                alert('Geolocation is not supported by this browser.');
+            }
+        }
+        
+        async function addCityToCompare() {
+            const city = document.getElementById('compareCityInput').value;
+            if (!city) return;
+            
+            try {
+                const response = await fetch(`/weather/${city}`);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    alert(data.error || 'An error occurred');
+                    return;
+                }
+                
+                // 检查城市是否已经在比较列表中
+                const existingCity = compareCities.find(c => c.city.toLowerCase() === city.toLowerCase());
+                if (existingCity) {
+                    alert('This city is already in your comparison list.');
+                    return;
+                }
+                
+                // 添加到比较列表
+                compareCities.push({
+                    city: data.city,
+                    temperature: data.temperature,
+                    humidity: data.humidity,
+                    description: data.description,
+                    icon: data.icon
+                });
+                
+                // 更新 UI
+                updateCityComparisonUI();
+                document.getElementById('compareCityInput').value = '';
+                
+            } catch (error) {
+                alert('Error fetching weather data: ' + error.message);
+            }
+        }
+        
+        function updateCityComparisonUI() {
+            const container = document.getElementById('citiesComparison');
+            container.innerHTML = '';
+            
+            compareCities.forEach((cityData, index) => {
+                const card = document.createElement('div');
+                card.className = 'bg-gray-100 rounded-lg p-3 w-40 shadow';
+                card.innerHTML = `
+                    <div class="text-center">
+                        <img src="http://openweathermap.org/img/wn/${cityData.icon}.png" alt="Weather icon" class="mx-auto h-10 w-10">
+                        <h4 class="font-bold text-sm">${cityData.city}</h4>
+                        <p class="text-lg font-bold">${cityData.temperature}°C</p>
+                        <p class="text-xs">${cityData.description}</p>
+                        <p class="text-xs">Humidity: ${cityData.humidity}%</p>
+                        ${index > 0 ? `<button onclick="removeCity(${index})" class="mt-1 px-2 py-1 bg-red-500 text-white rounded-lg text-xs">Remove</button>` : ''}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+        
+        function removeCity(index) {
+            compareCities.splice(index, 1);
+            updateCityComparisonUI();
+        }
+        
+        // 按 Enter 键也可以查询
+        document.getElementById('cityInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                getWeatherData();
+            }
+        });
+        
+        document.getElementById('compareCityInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addCityToCompare();
+            }
+        });
+    </script>
+</body>
+</html>
