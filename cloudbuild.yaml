@@ -1,0 +1,45 @@
+steps:
+  # 1) Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'asia-east1-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE_NAME}:${SHORT_SHA}'
+      - '.'
+
+  # 2) Push image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'asia-east1-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE_NAME}:${SHORT_SHA}'
+
+  # 3) Deploy to Cloud Run
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image'
+      - 'asia-east1-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE_NAME}:${SHORT_SHA}'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--set-secrets'
+      - 'WEATHER_API_KEY=${_SECRET_NAME}:latest'
+      - '--quiet'
+
+images:
+  - 'asia-east1-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE_NAME}:${SHORT_SHA}'
+
+substitutions:
+  _SERVICE_NAME: weather-app
+  _REGION: asia-east1
+  _AR_REPO: weather-app-repo
+  _IMAGE_NAME: weather-app
+  _SECRET_NAME: weather-api-key
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+

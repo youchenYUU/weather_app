@@ -18,7 +18,7 @@ def get_weather(city):
     if not api_key:
         return jsonify({"error": "API key not configured"}), 500
         
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
     
     try:
         response = requests.get(url)
@@ -48,7 +48,7 @@ def get_forecast(city):
     if not api_key:
         return jsonify({"error": "API key not configured"}), 500
         
-    url = f"http://api.openweathermap.org/data/2.5/forecast?q={city}&appid={api_key}&units=metric"
+    url = f"https://api.openweathermap.org/data/2.5/forecast?q={city}&appid={api_key}&units=metric"
     
     try:
         response = requests.get(url)
@@ -90,7 +90,7 @@ def get_historical(city):
         return jsonify({"error": "API key not configured"}), 500
     
     # 首先獲取當前天氣，生成模擬歷史資料
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
     
     try:
         response = requests.get(url)
@@ -125,4 +125,6 @@ def get_historical(city):
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    # Cloud Run 會透過 PORT 環境變數指定要監聽的連接埠。
+    port = int(os.environ.get('PORT', '8080'))
+    app.run(host='0.0.0.0', port=port, debug=False)
