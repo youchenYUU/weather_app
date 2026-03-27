@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Quick app smoke test
+        run: |
+          python - <<'PY'
+          from app import app
+
+          client = app.test_client()
+          resp = client.get("/health")
+          assert resp.status_code == 200, resp.data
+          assert resp.get_json() == {"status": "healthy"}
+          print("health ok")
+          PY
+
+      - name: Bytecode compile check
+        run: |
+          python -m compileall app.py
